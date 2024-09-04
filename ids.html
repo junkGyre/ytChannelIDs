@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>YouTube Subscriptions Grid</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        #thumbnail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            max-width: 90vw;
+            max-height: 90vh;
+            overflow: auto;
+        }
+        .thumbnail {
+            position: relative;
+            width: 150px;
+            height: 150px;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .thumbnail img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .thumbnail:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body>
+    <div id="thumbnail-grid"></div>
+
+    <script src="https://apis.google.com/js/api.js"></script>
+    <script src="https://apis.google.com/js/client.js"></script>
+    <script>
+        const CLIENT_ID = '686885446533-s00v6ernaa036d900ch2pkbcd2nv2rrk.apps.googleusercontent.com';
+        const API_KEY = 'AIzaSyAZBTaxqRsfyJyn8pvFonx0y39kpm2Ycgc';
+        const SCOPES = ['https://www.googleapis.com/auth/youtube.readonly'];
+
+        let auth2;
+
+        function handleClientLoad() {
+            gapi.load('client:auth2', initClient);
+        }
+
+        function initClient() {
+            gapi.client.init({
+                apiKey: API_KEY,
+                clientId: CLIENT_ID,
+                discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/youtube/v3/rest'],
+                scope: SCOPES.join(' ')
+            }).then(() => {
+                auth2 = gapi.auth2.getAuthInstance();
+                auth2.isSignedIn.listen(updateSignInStatus);
+                updateSignInStatus(auth2.isSignedIn.get());
+                document.getElementById('authorize_button').onclick = handleAuthClick;
+                document.getElementById('signout_button').onclick = handleSignoutClick;
+            }).catch(err => {
+                console.error('Error initializing the client:', err);
+            });
+        }
+
+        function updateSignInStatus(isSignedIn) {
+            if (isSignedIn) {
+                listSubscriptions();
+            } else {
+                auth2.signIn();
+            }
+        }
+
+        function handleAuthClick() {
+            auth2.signIn();
+        }
+
+        function handleSignoutClick() {
+            auth2.signOut();
+        }
+
+        function listSubscriptions() {
+            gapi.client.youtube.subscriptions.list({
+                part: 'snippet',
+                mine: true,
+                maxResults: 50
+            }).then(response => {
+                const items = response.result.items;
+                const grid = document.getElementById('thumbnail-grid');
+                grid.innerHTML = ''; // Clear existing content
+                items.forEach(item => {
+                    const channel = item.snippet.resourceId.channelId;
+                    const thumbnailUrl = item.snippet.thumbnails.default.url;
+                    const thumbnailElement = document.createElement('div');
+                    thumbnailElement.className = 'thumbnail';
+                    thumbnailElement.onclick = () => {
+                        window.open(`https://www.youtube.com/channel/${channel}`, '_blank');
+                    };
+                    const imgElement = document.createElement('img');
+                    imgElement.src = thumbnailUrl;
+                    thumbnailElement.appendChild(imgElement);
+                    grid.appendChild(thumbnailElement);
+                });
+            }).catch(err => {
+                console.error('Error fetching subscriptions:', err);
+            });
+        }
+
+        handleClientLoad();
+    </script>
+</body>
+</html>
+
